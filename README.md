@@ -1,11 +1,18 @@
-# Scan It
+# Scan It — Landing Page
 
-Responsive Arabic/English landing page for Scan It QR & NFC solutions.
+A responsive bilingual (Arabic/English) landing page for Scan It's QR, NFC, and digital landing-page services.
 
-## Files
-- `index.html` — complete responsive page, styling, language switch, social links, call button, WhatsApp button, and InstaPay link.
+## Features
+- Dark, minimal luxury visual style with warm gold accents.
+- Arabic RTL and English LTR language switch.
+- Responsive layout for mobile and desktop.
+- Service overview, how-it-works section, and contact call-to-action.
+- WhatsApp and social profile links supplied for Scan It.
+- InstaPay link retained from the previous Scan It repository page; verify it before using for payments.
+- Single-file static site: `index.html`; no build step required.
 
 ## Run locally
-Open `index.html` in a browser. No build step is required.
+Open `index.html` in a browser.
 
-The social icons currently reference the existing public image assets in the `ashrafbadrpharmasy/pharmacy_qr` repository.
+## Deploy
+The repository is connected to Vercel and deploys from `main`.
