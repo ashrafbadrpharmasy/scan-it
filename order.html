@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071a2f"><title>تأكيد الطلب | Scan It</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:22px 12px;min-height:100vh;font-family:Arial,sans-serif;color:#fff;background:radial-gradient(circle at top,#183b66,#071a2f 48%,#020b16)}a{color:#bfdbfe}.card{max-width:560px;margin:auto;padding:24px 18px;background:#ffffff14;border:1px solid #ffffff30;border-radius:22px;box-shadow:0 20px 50px #0005}.top{text-align:center}.brand{font-size:28px;font-weight:800}.brand span{color:#60a5fa}h1{font-size:24px;margin:12px 0}p{line-height:1.7}.muted{font-size:13px;opacity:.8}.form label{display:block;margin:13px 0 6px;font-size:14px}.form input,.form select,.form textarea{width:100%;padding:12px;border:1px solid #ffffff45;border-radius:10px;background:#ffffff12;color:#fff;font:inherit}.form select option{color:#111}.form textarea{min-height:75px}.links{display:grid;gap:8px}.add{width:100%;padding:11px;border:1px dashed #60a5fa;border-radius:10px;background:#60a5fa18;color:#bfdbfe;font-weight:bold;font-size:14px}.price{margin:18px 0;padding:15px;border:1px solid #60a5fa70;border-radius:13px;background:#60a5fa12}.price p{margin:7px 0}.total{border-top:1px solid #ffffff30;padding-top:10px;font-size:17px}.deposit{font-size:20px;font-weight:bold;color:#93c5fd}.pay{display:block;text-align:center;margin:14px 0;padding:13px;background:#60a5fa;color:#071a2f;border-radius:11px;font-weight:bold;text-decoration:none}.submit{width:100%;margin-top:16px;padding:13px;border:0;border-radius:11px;background:#60a5fa;color:#071a2f;font-weight:bold;font-size:16px}.notice{padding:12px;border-radius:10px;background:#ffffff10;font-size:13px}.back{display:block;text-align:center;margin-top:18px}.status{padding:12px;margin-top:12px;border-radius:10px;background:#ffffff12;color:#bfdbfe;font-size:13px}[hidden]{display:none!important}
+</style></head>
+<body><main class="card">
+<div class="top"><div class="brand">Scan <span>It</span></div><h1>تأكيد طلبك</h1><p class="muted">املأ بياناتك، راجع السعر، وبعدها ادفع 20% مقدمًا لتأكيد جدية الطلب.</p></div>
+<form class="form" id="order-form" onsubmit="submitDemo(event)">
+<label for="name">الاسم</label><input id="name" name="name" required autocomplete="name" placeholder="اسمك بالكامل">
+<label for="business">اسم النشاط أو المحل</label><input id="business" name="business" required placeholder="اسم النشاط">
+<label for="contact">رقم تواصل شخصي</label><input id="contact" name="contact" type="tel" required autocomplete="tel" placeholder="رقم الموبايل اللي نقدر نكلمك عليه">
+<p class="notice">مهم: الرقم ده هو اللي هنتواصل معاك عليه عشان نراجع تفاصيل الطلب ونأكد معاك الشغل.</p>
+<label for="service">الخدمة المطلوبة</label><select id="service" name="service" required onchange="serviceChanged()"><option value="">اختار الخدمة</option><option value="all">صفحة تجمع كل اللينكات</option><option value="reviews">QR لتقييمات Google</option><option value="menu">منيو إلكتروني أو عرض منتجات</option><option value="custom">QR مخصص لطلب آخر</option></select>
+<div id="links-section" hidden><label>اللينكات الأساسية (لو الخدمة صفحة تجمع اللينكات)</label>
+<label for="facebook">Facebook (اختياري)</label><input id="facebook" name="facebook" type="url" placeholder="https://facebook.com/...">
+<label for="instagram">Instagram (اختياري)</label><input id="instagram" name="instagram" type="url" placeholder="https://instagram.com/...">
+<label for="tiktok">TikTok (اختياري)</label><input id="tiktok" name="tiktok" type="url" placeholder="https://tiktok.com/...">
+<label for="whatsapp">WhatsApp link (اختياري)</label><input id="whatsapp" name="whatsapp" type="url" placeholder="https://wa.me/...">
+<label for="instapay">InstaPay link (اختياري)</label><input id="instapay" name="instapay" type="url" placeholder="لينك إنستاباي">
+<div class="links" id="extra-links"></div><button class="add" type="button" onclick="addLink()">+ أضف لينك آخر (+100 جنيه لكل لينك)</button></div>
+<div id="menu-section" hidden><label for="menu-files">صور المنيو أو المنتجات (اختياري، صور أو PDF لحد 30MB إجماليًا)</label><input id="menu-files" name="menuFiles" type="file" accept="image/*,application/pdf" multiple onchange="checkFiles()"><p class="muted" id="file-status"></p></div>
+<label for="notes">تفاصيل إضافية (اختياري)</label><textarea id="notes" name="notes" placeholder="اكتب أي تفاصيل إضافية عن طلبك"></textarea>
+<div class="price"><h2>ملخص السعر</h2><p>الموقع + QR Code: <strong>950 جنيه</strong></p><p>اللينكات الإضافية: <strong id="link-count">0</strong> × 100 جنيه</p><label><input id="acrylic" type="checkbox" onchange="updatePrice()"> إضافة حامل أكريليك عليه QR Code ويدعم الدفع بتقنية NFC (+250 جنيه)</label><p class="total">إجمالي الطلب: <strong id="total">950 جنيه</strong></p><p>المطلوب دفعه الآن (20% مقدم تأكيد):</p><p class="deposit" id="deposit">190 جنيه</p><p class="muted" id="remaining">المتبقي بعد المقدم: 760 جنيه</p></div>
+<p class="notice">بعد مراجعة تفاصيل الطلب، ادفع المقدم بنسبة 20% من إجمالي الطلب عن طريق InstaPay. احتفظ بإثبات الدفع للتأكيد. المقدم المحسوب هنا توضيحي، والنموذج لسه مش بيبعت الطلب أو يثبت الدفع تلقائيًا.</p>
+<a class="pay" href="https://ipn.eg/S/mohamedashraf01070/instapay/27GkMd" target="_blank" rel="noopener noreferrer">افتح InstaPay للدفع</a>
+<button class="submit" type="submit">مراجعة الطلب</button><p class="status" id="status" hidden role="status"></p>
+</form><a class="back" href="index.html">الرجوع لموقع Scan It</a>
+</main>
+<script>
+function serviceChanged(){var s=document.getElementById('service').value;document.getElementById('links-section').hidden=s!=='all';document.getElementById('menu-section').hidden=s!=='menu'}
+function addLink(){var box=document.getElementById('extra-links');var count=box.querySelectorAll('input').length+1;if(count>100)return;var label=document.createElement('label');label.htmlFor='extra-link-'+count;label.textContent='لينك إضافي '+count+' (+100 جنيه)';var input=document.createElement('input');input.id=label.htmlFor;input.name='extraLink'+count;input.type='url';input.placeholder='https://...';input.required=true;box.appendChild(label);box.appendChild(input);updatePrice()}
+function updatePrice(){var count=document.querySelectorAll('#extra-links input').length;var total=950+count*100+(document.getElementById('acrylic').checked?250:0);var deposit=Math.ceil(total*.2);document.getElementById('link-count').textContent=count;document.getElementById('total').textContent=total+' جنيه';document.getElementById('deposit').textContent=deposit+' جنيه';document.getElementById('remaining').textContent='المتبقي بعد المقدم: '+(total-deposit)+' جنيه'}
+function checkFiles(){var input=document.getElementById('menu-files');var files=Array.from(input.files||[]);var total=files.reduce((s,f)=>s+f.size,0);var ok=files.every(f=>f.type.startsWith('image/')||f.type==='application/pdf')&&total<=30*1024*1024;input.setCustomValidity(ok?'':'مسموح بالصور وPDF فقط وبحجم إجمالي لا يتجاوز 30MB.');document.getElementById('file-status').textContent=ok?(files.length?'عدد الملفات: '+files.length+'، الحجم الإجمالي '+(total/1024/1024).toFixed(2)+'MB':''):'مسموح بالصور وPDF فقط وبحجم إجمالي لا يتجاوز 30MB.'}
+function submitDemo(e){e.preventDefault();var status=document.getElementById('status');status.hidden=false;status.textContent='تمت مراجعة البيانات في هذه الصفحة التجريبية فقط. الطلب لم يُرسل ولم يتم تسجيل الدفع تلقائيًا؛ يلزم ربط النظام بخدمة استقبال الطلبات لتفعيل التأكيد الفعلي.'}
+updatePrice();
+</script></body></html>
