@@ -11,7 +11,7 @@
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.0';
 const sb=createClient('https://uussqwspmjtzubgwixbh.supabase.co','sb_publishable_p6KNlx4LwoMa6sB96c7aJQ_cYWm8sVN');const $=id=>document.getElementById(id);let p={base_page:950,extra_link:100,acrylic_nfc:250,deposit_percent:20,menu_price:0,google_reviews_price:0};
-async function loadP(){const{data}=await sb.from('store_settings').select('value').eq('key','pricing').maybeSingle();if(data?.value)p={...p,...data.value};prices()}
+async function loadP(){const[{data:pd},{data:sd}]=await Promise.all([sb.from('store_settings').select('value').eq('key','pricing').maybeSingle(),sb.from('store_settings').select('value').eq('key','public_store').maybeSingle()]);if(pd?.value)p={...p,...pd.value};if(sd?.value?.instapay_url)document.querySelector('.pay').href=sd.value.instapay_url;prices()}
 function count(){return $('extras').querySelectorAll('input').length}
 function calc(){let base=$('service').value==='google_reviews'?+p.google_reviews_price:$('service').value==='menu'?+p.menu_price:+p.base_page;let total=base+count()*+p.extra_link+($('acrylic').checked?+p.acrylic_nfc:0);let deposit=Math.ceil(total*(+p.deposit_percent)/100);return{base,total,deposit,remaining:total-deposit}}
 function prices(){let t=calc();$('base').textContent=t.base+' جنيه';$('extraPrice').textContent=count()*+p.extra_link+' جنيه';$('acrylicPrice').textContent=($('acrylic').checked?+p.acrylic_nfc:0)+' جنيه';$('total').textContent=t.total+' جنيه';$('deposit').textContent=t.deposit+' جنيه';$('remaining').textContent=t.remaining+' جنيه';$('total2').textContent=t.total+' جنيه';$('deposit2').textContent=t.deposit+' جنيه'}
