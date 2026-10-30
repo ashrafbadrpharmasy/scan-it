@@ -28,4 +28,23 @@ using (
   and public.has_staff_permission('products')
 );
 
+-- Prevent staff clients from attributing client-created audit rows to another user.
+-- Existing dashboard actions write their own auth.uid() as actor_id.
+drop policy if exists "authenticated staff can write audit logs" on public.audit_logs;
+
+create policy "staff can write own audit logs"
+on public.audit_logs
+for insert
+to authenticated
+with check (
+  actor_id = (select auth.uid())
+  and (
+    public.has_staff_permission('settings')
+    or public.has_staff_permission('employees')
+    or public.has_staff_permission('orders')
+    or public.has_staff_permission('payments')
+    or public.has_staff_permission('products')
+  )
+);
+
 commit;
