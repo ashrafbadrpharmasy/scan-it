@@ -12,9 +12,40 @@
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.0';const sb=createClient('https://uussqwspmjtzubgwixbh.supabase.co','sb_publishable_p6KNlx4LwoMa6sB96c7aJQ_cYWm8sVN');const $=id=>document.getElementById(id);let user=null,staff=null,price={},pub={};const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const safeHttpUrl=value=>{try{const u=new URL(String(value||''));return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return''}};const can=p=>!!staff&&((staff.permissions||[]).includes('*')||(staff.permissions||[]).includes(p));function msg(id,t){$(id).textContent=t;$(id).classList.remove('hidden')}function money(x){return Number(x||0)+' جنيه'}
 function tab(name){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));['orders','pricing','products','employees'].forEach(x=>$('panel-'+x).classList.toggle('hidden',x!==name))}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(!b.classList.contains('hidden')){tab(b.dataset.tab);({orders:loadOrders,pricing:loadPrice,products:loadProducts,employees:loadEmployees}[b.dataset.tab])()}});
-function loggedOut(){ $('login').classList.remove('hidden');$('app').classList.add('hidden')}
-async function start(){const{data:{session}}=await sb.auth.getSession();if(!session){loggedOut();return}user=session.user;const{data,error}=await sb.from('staff_members').select('*').eq('user_id',user.id).maybeSingle();if(error||!data||!data.active){loggedOut();msg('loginStatus','الحساب مش مضاف كموظف نشط. اطلب من المدير إضافتك.');return}staff=data;$('login').classList.add('hidden');$('app').classList.remove('hidden');$('welcome').textContent='أهلًا '+(staff.display_name||user.email);$('role').textContent='الدور: '+staff.role+' · الصلاحيات: '+staff.permissions.join('، ');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('hidden',!can(({orders:'orders',pricing:'settings',products:'products',employees:'employees'})[b.dataset.tab])));let first=[...document.querySelectorAll('[data-tab]')].find(b=>!b.classList.contains('hidden'));if(first)tab(first.dataset.tab);await loadOrders()}
-$('loginForm').onsubmit=async e=>{e.preventDefault();const{error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)msg('loginStatus','تعذر الدخول: '+(error.message==='Invalid login credentials'?'البريد أو كلمة المرور غير صحيحين. اضغط «نسيت كلمة المرور؟» لإنشاء كلمة مرور جديدة.':error.message));else start()};$('forgotPassword').onclick=async()=>{const email=$('email').value.trim();if(!email){msg('loginStatus','اكتب البريد الإلكتروني أولًا ثم اضغط «نسيت كلمة المرور؟».');return}const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});if(error){msg('loginStatus','تعذر إرسال رابط الاستعادة: '+error.message+' — قد يحتاج رابط الموقع إلى إضافته في Supabase Auth URL Configuration.');return}msg('loginStatus','لو البريد مسجل، هيوصلك رابط لاستعادة كلمة المرور. افتح الرسالة من نفس البريد.');};sb.auth.onAuthStateChange(async(event,session)=>{if(event==='PASSWORD_RECOVERY'){$('login').classList.remove('hidden');$('loginForm').classList.add('hidden');$('resetForm').classList.remove('hidden');msg('loginStatus','اكتب كلمة مرور جديدة لا تقل عن 8 أحرف.')}});$('resetForm').onsubmit=async e=>{e.preventDefault();const{error}=await sb.auth.updateUser({password:$('newPassword').value});if(error){msg('loginStatus','تعذر تغيير كلمة المرور: '+error.message);return}await sb.auth.signOut();$('resetForm').classList.add('hidden');$('loginForm').classList.remove('hidden');$('newPassword').value='';$('password').value='';msg('loginStatus','تم تغيير كلمة المرور. سجّل الدخول بالكلمة الجديدة.');};$('logout').onclick=async()=>{await sb.auth.signOut();loggedOut()};$('refresh').onclick=loadOrders;
+function loggedOut(){ $('login').classList.remove('hidden');$('app').classList.add('hidden');$('loginForm').classList.remove('hidden'); }
+let loginInProgress=false;
+async function start(){
+ try{
+  const {data:{session},error:sessionError}=await sb.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!session){user=null;staff=null;loggedOut();return false}
+  const currentUser=session.user;
+  const {data,error}=await sb.from('staff_members').select('user_id,display_name,role,permissions,active').eq('user_id',currentUser.id).maybeSingle();
+  if(error)throw new Error('تم تسجيل الدخول، لكن تعذر تحميل صلاحيات الموظف: '+error.message);
+  if(!data)throw new Error('تم تسجيل الدخول، لكن الحساب غير مضاف في قائمة الموظفين. اطلب من المدير إضافتك.');
+  if(!data.active)throw new Error('حساب الموظف موقوف حاليًا. تواصل مع المدير.');
+  user=currentUser;staff={...data,permissions:Array.isArray(data.permissions)?data.permissions:[]};
+  $('login').classList.add('hidden');$('app').classList.remove('hidden');
+  $('welcome').textContent='أهلًا '+(staff.display_name||user.email||'');
+  $('role').textContent='الدور: '+(staff.role||'موظف')+' · الصلاحيات: '+staff.permissions.join('، ');
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('hidden',!can(({orders:'orders',pricing:'settings',products:'products',employees:'employees'})[b.dataset.tab])));
+  const first=[...document.querySelectorAll('[data-tab]')].find(b=>!b.classList.contains('hidden'));
+  if(first){tab(first.dataset.tab);await ({orders:loadOrders,pricing:loadPrice,products:loadProducts,employees:loadEmployees}[first.dataset.tab]());}
+  return true;
+ }catch(error){user=null;staff=null;loggedOut();msg('loginStatus',error?.message||'حدث خطأ أثناء تجهيز لوحة الموظفين. حاول مرة أخرى.');return false}
+}
+$('loginForm').onsubmit=async e=>{
+ e.preventDefault();if(loginInProgress)return;
+ loginInProgress=true;const button=$('loginForm').querySelector('button[type="submit"]');
+ button.disabled=true;button.textContent='جاري تسجيل الدخول...';$('loginStatus').classList.add('hidden');
+ try{
+  const {data,error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  if(error){msg('loginStatus',error.message==='Invalid login credentials'?'البريد الإلكتروني أو كلمة المرور غير صحيحين. استخدم «نسيت كلمة المرور؟» لإعادة تعيين كلمة المرور.':error.message);return}
+  const ready=await start();
+  if(!ready)await sb.auth.signOut();
+ }catch(error){msg('loginStatus','تعذر إكمال تسجيل الدخول: '+(error?.message||'خطأ غير معروف'))}
+ finally{loginInProgress=false;button.disabled=false;button.textContent='دخول'}
+};$('forgotPassword').onclick=async()=>{const email=$('email').value.trim();if(!email){msg('loginStatus','اكتب البريد الإلكتروني أولًا ثم اضغط «نسيت كلمة المرور؟».');return}const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});if(error){msg('loginStatus','تعذر إرسال رابط الاستعادة: '+error.message+' — قد يحتاج رابط الموقع إلى إضافته في Supabase Auth URL Configuration.');return}msg('loginStatus','لو البريد مسجل، هيوصلك رابط لاستعادة كلمة المرور. افتح الرسالة من نفس البريد.');};sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){$('login').classList.remove('hidden');$('app').classList.add('hidden');$('loginForm').classList.add('hidden');$('resetForm').classList.remove('hidden');msg('loginStatus','اكتب كلمة مرور جديدة لا تقل عن 8 أحرف.')}else if(event==='SIGNED_OUT'){user=null;staff=null;loggedOut()}});$('resetForm').onsubmit=async e=>{e.preventDefault();const{error}=await sb.auth.updateUser({password:$('newPassword').value});if(error){msg('loginStatus','تعذر تغيير كلمة المرور: '+error.message);return}await sb.auth.signOut();$('resetForm').classList.add('hidden');$('loginForm').classList.remove('hidden');$('newPassword').value='';$('password').value='';msg('loginStatus','تم تغيير كلمة المرور. سجّل الدخول بالكلمة الجديدة.');};$('logout').onclick=async()=>{await sb.auth.signOut();loggedOut()};$('refresh').onclick=loadOrders;
 async function signed(path){if(!path)return'';const{data,error}=await sb.storage.from('scan-it-uploads').createSignedUrl(path,900);return error?'':data.signedUrl}
 let ordersView='active',ordersPage=0,ordersPageSize=50,ordersHasMore=true;
 $('activeOrdersTab').onclick=()=>{ordersView='active';$('activeOrdersTab').classList.add('active');$('archiveOrdersTab').classList.remove('active');$('archiveActions').classList.add('hidden');loadOrders()};
