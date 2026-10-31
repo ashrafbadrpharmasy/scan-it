@@ -1,0 +1,26 @@
+name: Security static checks
+
+on:
+  push:
+    branches:
+      - main
+      - security/hardening-followup-2026-11-01
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  static-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run security regression tests
+        run: node --test tests/security-static.test.mjs
