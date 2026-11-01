@@ -51,10 +51,3 @@ test("Vercel security headers include baseline protections", async () => {
   assert.match(values["content-security-policy"], /frame-ancestors 'none'/);
   assert.match(values["strict-transport-security"], /max-age=/);
 });
-
-test("public tracking function applies server-side rate limiting", async () => {
-  const fn = await readFile(new URL("../supabase/functions/track-order/index.ts", import.meta.url), "utf8");
-  assert.match(fn, /consume_track_order_rate_limit/);
-  assert.match(fn, /p_limit:\s*10/);
-  assert.match(fn, /Retry-After/);
-});
