@@ -123,10 +123,20 @@ test("password changes are routed through the HIBP Edge Function", async () => {
 });
 
 test("Edge Functions enforce an origin allowlist and do not use wildcard CORS", async () => {
-  for (const path of ["supabase/functions/track-order/index.ts","supabase/functions/delete-archive-orders/index.ts","supabase/functions/password-security/index.ts"]) {
+  for (const path of ["supabase/functions/track-order/index.ts","supabase/functions/delete-archive-orders/index.ts","supabase/functions/password-security/index.ts","supabase/functions/secure-upload/index.ts"]) {
     const fn = await read(path);
     assert.match(fn, /Vary/);
     assert.match(fn, /allowedOrigins\.has\(origin\)/);
     assert.doesNotMatch(fn, /Access-Control-Allow-Origin["']?\s*:\s*["']\*["']/);
   }
+});
+
+
+test("storage upload migration removes direct customer inserts and preserves product staff uploads", async () => {
+  const migration = await read("supabase/migrations/202611010003_secure_storage_uploads.sql");
+  assert.match(migration, /drop policy if exists "customers can upload their own checkout files"/);
+  assert.match(migration, /product staff can upload product images/);
+  assert.match(migration, /has_staff_permission\('products'\)/);
+  const rollback = await read("supabase/rollback/202611010003_secure_storage_uploads.sql");
+  assert.match(rollback, /customers can upload their own checkout files/);
 });
