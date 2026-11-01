@@ -178,6 +178,15 @@ Evidence files:
 - Employee password-reset UI now requires 12 characters and checks the HIBP Pwned Passwords range API using SHA-1 k-anonymity (only the first 5 hash characters are sent). This is client-side defense-in-depth only and can be bypassed; it does not replace Supabase Auth server-side password policy or leaked-password protection.
 - These Edge Function and UI changes are in GitHub only. They were not deployed or live-tested.
 
+### 2026-11-01 follow-up hardening (branch only)
+
+- Re-reviewed the complete tracked HTML/JS entry points on the branch. Staff order-detail rendering escapes all displayed customer values and validates generated signed URLs as HTTP(S); product and employee text values are escaped. Remaining HTML-string construction still exists and requires a controlled DOM refactor before strict CSP.
+- Fixed a newly identified tracking availability issue: the secondary per-order rate-limit bucket is now scoped to both the order number and the trusted ingress IP. Previously, an unauthenticated visitor could exhaust one global order-number bucket and temporarily prevent every customer from tracking that order. When the trusted IP header is absent, the per-order bucket is skipped; the shared fallback IP bucket remains. This code is branch-only and not live-tested.
+- The order form now accepts the configurable InstaPay destination only when it parses as an HTTPS URL; invalid or non-HTTPS values remove the payment link rather than becoming an active navigation target.
+- Added browser defense-in-depth headers: X-Permitted-Cross-Domain-Policies=none, X-DNS-Prefetch-Control=off, and Cross-Origin-Opener-Policy=same-origin. Existing CSP remains intentionally compatible with inline scripts/styles and still contains unsafe-inline; strict CSP is not claimed.
+- Added three static regression assertions covering the per-order rate-limit scope, HTTPS-only payment URL, and escaped employee/product names. Source-level checks were inspected and matched (7/7 ad-hoc assertions for the latest edits), but the GitHub Actions Node test suite has not yet been observed running on this latest commit. A Vercel preview deployment status was reported successful for the commit; this is not a security test or production release.
+- Vercel project metadata confirms the three configured production domains used in the Edge Function CORS allowlist. No Edge Function was deployed.
+
 ### Remaining uncompleted items
 
 - No complete DB dump, Storage object download, checksum verification, or restore test. The catalog snapshot is metadata-only.
