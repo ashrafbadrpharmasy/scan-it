@@ -3,15 +3,42 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Permitted-Cross-Domain-Policies", "value": "none" },
-        { "key": "X-DNS-Prefetch-Control", "value": "off" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self)" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://uussqwspmjtzubgwixbh.supabase.co wss://uussqwspmjtzubgwixbh.supabase.co; upgrade-insecure-requests" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Permitted-Cross-Domain-Policies",
+          "value": "none"
+        },
+        {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "off"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(self)"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://esm.sh 'sha256-oHz2csvwSd8lSkXrAWY2JcJCz9h8/vTS0DAwz/4jNMw=' 'sha256-pZBkoQwaSr6S3TXO9fp1gxkJCF2WxopCkXF7Po69KXE=' 'sha256-rWzyutKF1vsDZNQcvC9wOeVMatf2STC8Ar2wG/NMo/A='; script-src-attr 'unsafe-hashes' 'sha256-78/rSJaSOKysGdkkbeo1qRL7ZoPwx2RjMcJFezdtGHw=' 'sha256-9dyAvVFf7VikJEGl+0mzGiqOfNVPcjx40iG6rVqDjiM=' 'sha256-Dwa2guZnU2sgGw7fDPNAHrh3eRhe3d7VD5AHivwFX5A=' 'sha256-F2EbC8gEY+bALqBTDUMMjPYp9SVR4DxT3YKM1vNoPJQ=' 'sha256-KdVMoeyF2s9EA8CRUSpfBXUTl92mkJGVIFa5DGEOfy8=' 'sha256-NPQiAFHfOX//546/pLtrKoVL9QjRuPsCI+6doZczyyI=' 'sha256-c+GjABRReQ7a4uttqhEvjt1TuNFaDIUp9tRDXqCYru0=' 'sha256-gzAYIw6+d7+MASKhes8u+pAirztC1+Lhqp8TtEMWhJs=' 'sha256-mZbkOgIWFSId9dcsnfyE9n+eaAxdR3Y45vkS6g29c7M=' 'sha256-pOKp+0fYiRGKYf4uTJlIH+sgg/SaZcl0RwKGDgt948s=' 'sha256-r7QhkgMbOZTnKVy4mycoQYFXc6FqgDEz+ARy14Y239g=' 'sha256-t1QD05454OHHdj5XXQsjIP6yUjGEGhCc6ijy08wS5uk=' 'sha256-uzQhWg5oLi7LDo88khQWy3wbpb15vU2POV54Vhkj/Pk=' 'sha256-vxlb6jIaQFOJ8SuXiCF0PXkMHIsq7B8VQIhQ/If8QQc='; style-src 'self' 'sha256-LYNfmmKa+DYOjLiDbumuX6eIJevNgeI6vuf6doHWLps=' 'sha256-gv/V3+MhzeexStdWHkAwDQlbA8zrHk8ySxkU4Chb7Tw=' 'sha256-mJgZnd+Vyau+Pv5sNRu2kOurPLI+hRichD8EJb7SUsA='; style-src-attr 'unsafe-hashes' 'sha256-/H2hTOCsm4krBdtUwvUHZs8LXfPPVbvCRygd55ipBRw=' 'sha256-1JYbYRjVzqacLA3p1x9JrMQMwfUDvv/0j2TWfJjIRXw=' 'sha256-35KBScVH0mcisYaS+jYHDa1tlFGmOrghafQWiYvD7Us=' 'sha256-Duf2atnAuKYQJLP8weHjB4u7h1/rXqGctpxZ7QK2sds=' 'sha256-MyZ8Ub286WjASSoWAgkXv5ZnScH2nScR5xHrmCFqvrg=' 'sha256-ceGZ2xO8cVLMyQChUzRGbgQoeYNOtqZEcN6rB4DOPx0=' 'sha256-ddX3XRpvzPKkObZMIn5hweGEWWuuxgL7WC/WLFAVCUA=' 'sha256-ilhEmPqUnBNI4k5JqSdScx8n+G1pWRh9GvFD0l/sx+c=' 'sha256-kFAIUwypIt04FgLyVU63Lcmp2AQimPh/TdYjy04Flxs=' 'sha256-ksGPa9rBx3qdJd85P0QDyQNATrJagvS5YtLUpHxWuto=' 'sha256-xT6h2iOFCmc+b0YYoNajguP1/DpiqxRRQMAc8B17igQ='; img-src 'self' data: https:; connect-src 'self' https://uussqwspmjtzubgwixbh.supabase.co wss://uussqwspmjtzubgwixbh.supabase.co; upgrade-insecure-requests"
+        }
       ]
     }
   ]
