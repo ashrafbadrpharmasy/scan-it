@@ -63,7 +63,7 @@ jobs:
         run: node tests/integration/supabase-local.mjs
       - name: Run browser smoke tests
         run: |
-          python3 -m http.server 4173 --directory . >/tmp/scan-it-http.log 2>&1 &
+          node tests/browser/static-server.mjs >/tmp/scan-it-http.log 2>&1 &
           echo $! >/tmp/scan-it-http.pid
           npx playwright test tests/browser/security-smoke.spec.mjs
       - name: Serve and probe local Edge Functions
