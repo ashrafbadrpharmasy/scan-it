@@ -93,6 +93,8 @@ try {
 
   const filePath = "customer-uploads/" + suffix + "/proof.png";
   const fakePng = new TextEncoder().encode("not actually a PNG file");
+  const directAnonUpload = await anon.storage.from(bucket).upload("customer-uploads/" + suffix + "/direct.png", fakePng, { contentType: "image/png" });
+  assert.ok(directAnonUpload.error, "direct anon Storage upload must be denied after secure-upload migration");
   const upload = await admin.storage.from(bucket).upload(filePath, fakePng, { contentType: "image/png" });
   assert.ifError(upload.error);
 
