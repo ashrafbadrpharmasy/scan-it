@@ -10,7 +10,7 @@
 <p class="muted" style="text-align:center"><a href="index.html" style="color:#bfdbfe">موقع Scan It</a> · قاعدة بيانات مستقلة</p></main>
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.0';const sb=createClient('https://uussqwspmjtzubgwixbh.supabase.co','sb_publishable_p6KNlx4LwoMa6sB96c7aJQ_cYWm8sVN');const $=id=>document.getElementById(id);let user=null,staff=null,price={},pub={};const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const safeHttpUrl=value=>{try{const u=new URL(String(value||''));return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return''}};const safeTags=new Set(['ARTICLE','LABEL','INPUT','DIV','P','SPAN','B','A','IMG','BUTTON','SELECT','OPTION','TEXTAREA','H3','BR']);
-const safeAttrs=new Set(['class','id','type','value','checked','disabled','placeholder','rows','href','src','alt','target','rel','for','name','min','max','step','data-details','data-save','data-product','aria-label','selected','required']);
+const safeAttrs=new Set(['class','id','type','value','checked','disabled','placeholder','rows','href','src','alt','target','rel','for','name','min','max','step','data-details','data-save','data-product','aria-label','selected','required','style']);
 function setSafeHtml(target,html,append=false){
  const parsed=new DOMParser().parseFromString(String(html||''),'text/html');
  const clone=node=>{
@@ -23,6 +23,7 @@ function setSafeHtml(target,html,append=false){
    const name=attr.name.toLowerCase(),value=attr.value;
    if(!safeAttrs.has(name))continue;
    if(name==='href'||name==='src'){const safe=safeHttpUrl(value);if(!safe)continue;out.setAttribute(name,safe);continue}
+   if(name==='style'&&!/^(?:width:\\s*auto|margin-top:\\s*10px);?$/i.test(value.trim()))continue;
    if(name==='target'&&value!=='_blank')continue;
    if(name==='rel'){out.setAttribute('rel','noopener noreferrer');continue}
    out.setAttribute(name,value);
