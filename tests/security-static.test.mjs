@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const read = (name) => readFile(new URL(`../${name}`, import.meta.url), "utf8");
 
@@ -75,4 +78,48 @@ test("staff product names and employee names are escaped before insertion", asyn
   const html = await read("staff.html");
   assert.match(html, /value="'\+esc\(x\.name_ar\)\+'/);
   assert.match(html, /esc\(x\.display_name\)/);
+});
+
+
+test("staff dashboard uses a strict DOM sanitizer and has no raw HTML insertion sinks", async () => {
+  const html = await read("staff.html");
+  assert.match(html, /function setSafeHtml\(target,html,append=false\)/);
+  assert.match(html, /new DOMParser\(\)\.parseFromString/);
+  assert.match(html, /safeHttpUrl\(value\)/);
+  assert.doesNotMatch(html, /\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=|document\.write/);
+});
+
+test("staff module parses successfully after security changes", async () => {
+  const html = await read("staff.html");
+  const match = html.match(/<script type="module">([\s\S]*?)<\\/script>/i);
+  assert.ok(match, "staff module script exists");
+  const dir = await mkdtemp(join(tmpdir(), "scan-it-staff-"));
+  const file = join(dir, "staff-module.mjs");
+  try {
+    await writeFile(file, match[1], "utf8");
+    const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("password changes are routed through the HIBP Edge Function", async () => {
+  const html = await read("staff.html");
+  const fn = await read("supabase/functions/password-security/index.ts");
+  assert.match(html, /functions\.invoke\('password-security'/);
+  assert.doesNotMatch(html, /api\.pwnedpasswords\.com/);
+  assert.match(fn, /api\.pwnedpasswords\.com\/range\//);
+  assert.match(fn, /Add-Padding/);
+  assert.match(fn, /updateUserById\(authData\.user\.id,\s*\{\s*password\s*\}\)/);
+  assert.match(fn, /password\.length\s*<\s*12/);
+});
+
+test("Edge Functions enforce an origin allowlist and do not use wildcard CORS", async () => {
+  for (const path of ["supabase/functions/track-order/index.ts","supabase/functions/delete-archive-orders/index.ts","supabase/functions/password-security/index.ts"]) {
+    const fn = await read(path);
+    assert.match(fn, /Vary/);
+    assert.match(fn, /allowedOrigins\.has\(origin\)/);
+    assert.doesNotMatch(fn, /Access-Control-Allow-Origin["']?\s*:\s*["']\*["']/);
+  }
 });
