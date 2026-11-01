@@ -30,11 +30,15 @@ test("customer upload enforces size and requires a file", async () => {
   assert.match(html, /f\.size>10\*1024\*1024/);
 });
 
-test("customer upload sends explicit content type and unique path", async () => {
+test("customer upload is routed through the server-side signature validator", async () => {
   const html = await read("order.html");
-  assert.match(html, /crypto\.randomUUID\(\)/);
-  assert.match(html, /contentType:f\.type/);
-  assert.match(html, /upsert:false/);
+  const fn = await read("supabase/functions/secure-upload/index.ts");
+  assert.match(html, /functions\.invoke\('secure-upload'/);
+  assert.doesNotMatch(html, /storage\.from\('scan-it-uploads'\)\.upload/);
+  assert.match(fn, /detectMime\(bytes\)/);
+  assert.match(fn, /detected!==declared/);
+  assert.match(fn, /upsert:false/);
+  assert.match(fn, /Vary/);
 });
 
 test("tracking page calls the public tracking function without rendering raw HTML from API", async () => {
