@@ -133,10 +133,10 @@ test("Edge Functions enforce an origin allowlist and do not use wildcard CORS", 
 
 
 test("storage upload migration removes direct customer inserts and preserves product staff uploads", async () => {
-  const migration = await read("supabase/migrations/202611010003_secure_storage_uploads.sql");
+  const migration = await read("supabase/migrations/20261101120100_secure_storage_uploads.sql");
   assert.match(migration, /drop policy if exists "customers can upload their own checkout files"/);
   assert.match(migration, /product staff can upload product images/);
   assert.match(migration, /has_staff_permission\('products'\)/);
-  const rollback = await read("supabase/rollback/202611010003_secure_storage_uploads.sql");
+  const rollback = await read("supabase/rollback/20261101120100_secure_storage_uploads.sql");
   assert.match(rollback, /customers can upload their own checkout files/);
 });
