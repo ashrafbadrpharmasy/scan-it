@@ -48,6 +48,9 @@ test("Vercel security headers include baseline protections", async () => {
   const headers = config.headers.flatMap((entry) => entry.headers || []);
   const values = Object.fromEntries(headers.map((h) => [h.key.toLowerCase(), h.value]));
   assert.equal(values["x-content-type-options"], "nosniff");
+  assert.equal(values["x-permitted-cross-domain-policies"], "none");
+  assert.equal(values["x-dns-prefetch-control"], "off");
+  assert.equal(values["cross-origin-opener-policy"], "same-origin");
   assert.equal(values["x-frame-options"], "DENY");
   assert.match(values["content-security-policy"], /object-src 'none'/);
   assert.match(values["content-security-policy"], /frame-ancestors 'none'/);
