@@ -2,9 +2,9 @@
 
 ## Database migrations
 
-- `202611010001_prevent_self_staff_privilege_changes.sql`: use `supabase/rollback/202611010001_prevent_self_staff_privilege_changes.sql` only if the trigger causes a verified regression. It removes only the trigger/function added by that migration.
-- `202611010002_deny_api_access_track_order_rate_limits.sql`: use `supabase/rollback/202611010002_deny_api_access_track_order_rate_limits.sql`. The pre-change catalog snapshot showed no direct grants to `anon` or `authenticated`; rollback drops the explicit deny policy and keeps those grants revoked.
-- `20261030_restrict_storage_reads.sql`: see `supabase/rollback/20261030_restrict_storage_reads.rollback.md`. Exact prior policy SQL is not in the repository, so an executable rollback would be unsafe until retrieved from a verified backup.
+- `20261101035917_prevent_self_staff_privilege_changes.sql`: use `supabase/rollback/20261101035917_prevent_self_staff_privilege_changes.sql` only if the trigger causes a verified regression. It removes only the trigger/function added by that migration.
+- `20261101120000_deny_api_access_track_order_rate_limits.sql`: use `supabase/rollback/20261101120000_deny_api_access_track_order_rate_limits.sql`. The pre-change catalog snapshot showed no direct grants to `anon` or `authenticated`; rollback drops the explicit deny policy and keeps those grants revoked.
+- `20261030150633_restrict_storage_reads.sql`: see `supabase/rollback/20261030_restrict_storage_reads.rollback.md`. Exact prior policy SQL is not in the repository, so an executable rollback would be unsafe until retrieved from a verified backup.
 
 ## Vercel rollback
 
