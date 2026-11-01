@@ -49,15 +49,20 @@ Deno.serve(async (req: Request) => {
       status: 429, headers: { ...cors, "Retry-After": "60" }
     });
 
-    // Secondary independent bucket per order number limits distributed guessing of one order.
-    const orderHash = await sha256("order:" + orderNumber);
-    const { data: orderAllowed, error: orderError } = await sb.rpc("consume_track_order_rate_limit", {
-      p_ip_hash: orderHash, p_limit: 5
-    });
-    if (orderError) throw orderError;
-    if (orderAllowed !== true) return new Response(JSON.stringify({ error: "تم تجاوز عدد محاولات التتبع لهذا الرقم. حاول بعد دقيقة." }), {
-      status: 429, headers: { ...cors, "Retry-After": "60" }
-    });
+    // Scope the secondary order bucket to the trusted client IP. A global per-order
+    // bucket would let one unauthenticated visitor lock out every customer tracking
+    // that order number. If the trusted ingress IP is absent, retain only the shared
+    // fallback IP bucket above rather than creating a globally exhaustible order key.
+    if (trustedIp) {
+      const orderHash = await sha256("order:" + orderNumber + ":" + ipHash);
+      const { data: orderAllowed, error: orderError } = await sb.rpc("consume_track_order_rate_limit", {
+        p_ip_hash: orderHash, p_limit: 5
+      });
+      if (orderError) throw orderError;
+      if (orderAllowed !== true) return new Response(JSON.stringify({ error: "تم تجاوز عدد محاولات التتبع لهذا الرقم من جهازك. حاول بعد دقيقة." }), {
+        status: 429, headers: { ...cors, "Retry-After": "60" }
+      });
+    }
 
     const { data, error } = await sb.from("orders")
       .select("order_number,order_status,public_status_note,created_at,updated_at")
