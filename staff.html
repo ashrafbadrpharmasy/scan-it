@@ -51,7 +51,7 @@ $('loginForm').onsubmit=async e=>{
  const prefix=hash.slice(0,5),suffix=hash.slice(5);
  const response=await fetch('https://api.pwnedpasswords.com/range/'+prefix,{headers:{'Add-Padding':'true'}});
  if(!response.ok)throw new Error('تعذر التحقق من كلمة المرور المسربة. حاول لاحقًا.');
- const lines=(await response.text()).split(/\\r?\\n/);
+ const lines=(await response.text()).split(/\r?\n/);
  return lines.some(line=>{const [candidate,count]=line.split(':');return candidate===suffix&&Number(count)>0});
 }
 $('resetForm').onsubmit=async e=>{e.preventDefault();const password=$('newPassword').value;if(password.length<12){msg('loginStatus','كلمة المرور لازم تكون 12 حرفًا على الأقل.');return}try{if(await isPwnedPassword(password)){msg('loginStatus','كلمة المرور ظهرت في تسريبات سابقة. اختَر كلمة مرور مختلفة.');return}}catch(error){msg('loginStatus',error.message||'تعذر فحص كلمة المرور.');return}const{error}=await sb.auth.updateUser({password});if(error){msg('loginStatus','تعذر تغيير كلمة المرور: '+error.message);return}await sb.auth.signOut();$('resetForm').classList.add('hidden');$('loginForm').classList.remove('hidden');$('newPassword').value='';$('password').value='';msg('loginStatus','تم تغيير كلمة المرور. سجّل الدخول بالكلمة الجديدة.');};$('logout').onclick=async()=>{await sb.auth.signOut();loggedOut()};$('refresh').onclick=loadOrders;
