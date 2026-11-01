@@ -51,6 +51,13 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run static security regression suite
         run: node --test tests/security-static.test.mjs
+      - name: Run Auth, RLS, Storage, and archive integration tests when schema is available
+        if: env.DATABASE_URL != ''
+        env:
+          SUPABASE_URL: ${{ env.API_URL }}
+          SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+        run: node tests/integration/supabase-local.mjs
       - name: Run browser smoke tests
         run: |
           python3 -m http.server 4173 --directory . >/tmp/scan-it-http.log 2>&1 &
@@ -59,8 +66,8 @@ jobs:
       - name: Serve and probe local Edge Functions
         run: |
           cat > /tmp/functions.env <<EOF
-          SUPABASE_URL=http://127.0.0.1:54321
-          SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+          SUPABASE_URL=$API_URL
+          SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY
           EOF
           supabase functions serve --env-file /tmp/functions.env --no-verify-jwt >/tmp/scan-it-functions.log 2>&1 &
           echo $! >/tmp/scan-it-functions.pid
