@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.delete-archive-orders]
 verify_jwt = false
+
+[functions.password-security]
+verify_jwt = true
