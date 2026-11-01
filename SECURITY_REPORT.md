@@ -145,3 +145,82 @@
 ---
 
 **Final assessment:** The requested seven-stage closure cannot honestly be marked complete with the current access and free-tier constraints. Production was left unchanged. The artifacts above prepare the next safe steps, but do not substitute for a tested isolated environment, verified backup/restore, deployed Edge Function fixes, or live regression tests.
+
+
+## 7. Continuation update — cloud-only checks and branch remediation
+
+**Latest evidence commit:** `7a901d53427109ace27a9358a525669b2b8db923`  
+**Static CI:** GitHub Actions run `41272650209`, job `static-security`, completed successfully. Log shows **7 tests passed, 0 failed**. These are static regression tests, not live penetration tests.
+
+### Production SQL tests (all transaction-scoped and rolled back)
+
+- Anonymous role saw 0 orders.
+- Authenticated fake-customer JWT claim saw 0 orders.
+- Fake customer had no orders permission.
+- `anon` and `authenticated` cannot execute `public.consume_track_order_rate_limit(text,integer)`.
+- `anon` saw 0 objects in `scan-it-uploads`.
+- Authenticated can execute `private.has_staff_permission(text)`; this helper returns a boolean based on the caller's active staff record and permission list. Its EXECUTE grant is therefore exposed but not a direct data-read primitive.
+- Attempt to seed fake staff_members rows inside a transaction was blocked by the FK to auth.users. No Auth users were created. Employee/manager/suspended role matrix is therefore still untested.
+- Dry-run of the rate-limit ACL revoke + explicit deny RLS policy succeeded inside `BEGIN` / `ROLLBACK`; no migration was applied.
+
+Evidence files:
+- `docs/security-evidence/production-catalog-snapshot.md`
+- `docs/security-evidence/role-simulation.md`
+- `docs/security-evidence/production-sql-role-tests.sql`
+- `docs/security-evidence/edge-function-review.md`
+
+### Additional branch-only remediation
+
+- Retrieved the deployed source of both Edge Functions and added repository copies under `supabase/functions/`.
+- `track-order`: removes client-controlled X-Forwarded-For/X-Real-IP fallback, uses cf-connecting-ip only with a shared fallback bucket, adds a separate per-order hash rate-limit bucket (limit 5), and uses an origin allowlist with `Vary: Origin`.
+- `delete-archive-orders`: origin allowlist + `Vary: Origin`; no internal Storage error detail is returned to clients; internal details go to logs only.
+- Fixed Bearer token parsing in the archived-delete function source.
+- Employee password-reset UI now requires 12 characters and checks the HIBP Pwned Passwords range API using SHA-1 k-anonymity (only the first 5 hash characters are sent). This is client-side defense-in-depth only and can be bypassed; it does not replace Supabase Auth server-side password policy or leaked-password protection.
+- These Edge Function and UI changes are in GitHub only. They were not deployed or live-tested.
+
+### Remaining uncompleted items
+
+- No complete DB dump, Storage object download, checksum verification, or restore test. The catalog snapshot is metadata-only.
+- No staff/manager/suspended test users; no full customer isolation matrix with seeded temporary auth identities.
+- No real XSS/SQLi HTTP payload execution; static CI does not count as penetration testing.
+- No live CORS/OPTIONS/rate-limit tests against deployed Edge Functions.
+- No live browser order creation, employee login, archive deletion, signed URL, or tracking smoke tests.
+- No live Vercel HTTP header/CSP verification.
+- CSP still contains `unsafe-inline` for scripts and styles. Inline scripts, inline event handlers, and style attributes remain throughout the HTML pages; removing it without a controlled refactor would break existing interactions. Strict CSP refactor is not completed.
+- Leaked Password Protection remains disabled per Supabase Security Advisor. HIBP client-side reset check is not a server-side substitute.
+- No production migration, Edge Function deployment, PR merge, or production deployment was performed. Production data remained untouched.
+
+## 8. Final scoring (out of 10)
+
+Scoring reflects verified evidence, not intended work. Any untested integration surface is penalized; a ❌ area is capped at 6.
+
+| Axis | Score / 10 | Rationale and evidence |
+|---|---:|---|
+| Database and RLS | **6/10** | Catalog and ACL snapshot captured; anon and fake-customer order visibility returned 0; rate-limit RPC denied; migration dry-run rolled back. Full RLS matrix and schema restore are not tested. |
+| Staff and permissions | **4/10** | Self-escalation trigger and employee permission policies exist in schema/repo, but no employee/manager/suspended identity tests; fake staff seed blocked by auth.users FK. |
+| Files and Storage | **5/10** | Bucket is private, 10 MiB cap and MIME allowlist verified; anon saw 0 objects; no actual upload bypass, magic-byte, signed URL authorization, or object restore test. |
+| Website XSS/CSP/Headers | **4/10** | Seven static CI tests passed and tracking output is escaped; several dynamic HTML sinks remain, CSP still permits unsafe-inline, and live headers/browser payloads were not tested. |
+| Edge Functions | **5/10** | Deployed source reviewed and safer replacement source committed; no live deployment, CORS, JWT, rate-limit, or archive-delete integration test. |
+| Backup and restore | **1/10** | Metadata-only catalog snapshot and backup script exist; no database dump, full Storage backup, checksum verification, or restore. |
+| Deployment and secrets | **3/10** | Branch and preview deployment metadata inspected; limited source/commit search found no confirmed service-role leak, but no exhaustive secret scan. No production smoke test or release/rollback exercise. |
+
+**Overall security assessment: 4/10.** This is a partial hardening result, not a closed audit. The application is not certified secure and production rollout of the branch changes is not recommended until the gates below are satisfied.
+
+## 9. Highest-priority actions to raise the score
+
+1. **Prove backup and restore:** create a database dump and complete Storage object export with checksums, then restore both into an isolated project. This is the largest current blocker.
+2. **Complete Auth/RLS role tests:** use disposable identities in an isolated Supabase project and test two customers, normal employee, manager, and suspended employee for every relevant SELECT/INSERT/UPDATE/DELETE path.
+3. **Deploy and test Edge Functions safely:** after backup, deploy one function at a time; verify allowed and disallowed Origin, missing/invalid JWT, role checks, spoofed forwarding headers, per-IP and per-order rate limits, and generic errors.
+4. **Finish CSP and DOM hardening:** move inline scripts/styles and inline event handlers to external assets or nonce/hash-based CSP; replace remaining dynamic HTML string construction with DOM APIs or rigorously escaped/validated values; test XSS payloads in a browser.
+5. **Enable server-side password controls:** enable Supabase leaked-password protection if available; otherwise set Auth minimum length to 12 and strongest available policy. Treat the HIBP UI check as supplemental only.
+6. **Verify production rollout:** only after the above, merge the branch, deploy, and run real login, create-order, tracking, employee update, signed URL, and archive flows. Keep a known-good Vercel deployment ready for immediate rollback.
+
+## 10. Manual actions — consolidated
+
+1. Supabase Dashboard → Authentication → Password Security: enable leaked-password protection if available; set minimum password length to 12 or higher and strongest available policy.
+2. Create an isolated test Supabase project at no charge (if available). Do not use production Auth users or the real manager account for role tests.
+3. For a full backup, use a trusted environment with PostgreSQL client tools and Supabase CLI. Supply the database URL only through a protected environment variable; run `scripts/backup-scan-it.sh`; download every Storage object and verify checksums; restore both into the isolated project. Do not paste credentials into chat or commit them.
+4. Review GitHub Actions secrets and Vercel environment variable names/targets in their dashboards; rotate any credential found in source/history. Never share secret values.
+5. After backup and isolated tests, authorize/perform one-by-one Edge Function deployments and Vercel production rollout; verify every smoke test and rollback immediately if a core workflow fails.
+
+**Final state:** branch hardening and evidence collection progressed; production database and deployed Edge Functions were not changed. The seven requested closure stages are not all complete, and the honest final score remains **4/10**.
