@@ -91,7 +91,7 @@ test("staff dashboard uses a strict DOM sanitizer and has no raw HTML insertion 
 
 test("staff module parses successfully after security changes", async () => {
   const html = await read("staff.html");
-  const match = html.match(/<script type="module">([\s\S]*?)<\\/script>/i);
+  const match = html.match(/<script type="module">([\s\S]*?)<\/script>/i);
   assert.ok(match, "staff module script exists");
   const dir = await mkdtemp(join(tmpdir(), "scan-it-staff-"));
   const file = join(dir, "staff-module.mjs");
