@@ -53,3 +53,23 @@ test("Vercel security headers include baseline protections", async () => {
   assert.match(values["content-security-policy"], /frame-ancestors 'none'/);
   assert.match(values["strict-transport-security"], /max-age=/);
 });
+
+
+test("tracking per-order rate limit is scoped to a trusted client and cannot be globally exhausted", async () => {
+  const fn = await read("supabase/functions/track-order/index.ts");
+  assert.match(fn, /if\s*\(trustedIp\)\s*\{[\s\S]*?sha256\("order:"\s*\+\s*orderNumber\s*\+\s*":"\s*\+\s*ipHash\)/);
+  assert.doesNotMatch(fn, /sha256\("order:"\s*\+\s*orderNumber\s*\)/);
+});
+
+test("dynamic InstaPay URL from settings is restricted to HTTPS", async () => {
+  const html = await read("order.html");
+  assert.match(html, /new URL\(String\(sd\.value\.instapay_url\)\)/);
+  assert.match(html, /paymentUrl\.protocol==='https:'/);
+  assert.doesNotMatch(html, /\.pay'\)\.href=sd\.value\.instapay_url/);
+});
+
+test("staff product names and employee names are escaped before insertion", async () => {
+  const html = await read("staff.html");
+  assert.match(html, /value=\''\+esc\(x\.name_ar\)/);
+  assert.match(html, /esc\(x\.display_name\)/);
+});
