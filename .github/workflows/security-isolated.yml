@@ -46,7 +46,7 @@ jobs:
           fi
           supabase db dump --db-url "$DATABASE_URL" --schema public,private --file /tmp/scan-it-production-schema.sql
           psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f /tmp/scan-it-production-schema.sql
-          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/migrations/202611010003_secure_storage_uploads.sql
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/migrations/20261101120100_secure_storage_uploads.sql
           echo "Production schema-only snapshot and branch upload-hardening migration imported to disposable local Postgres; no production rows were exported."
       - name: Install browser and Supabase test dependencies
         run: |
