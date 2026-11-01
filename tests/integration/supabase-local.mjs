@@ -11,6 +11,7 @@ const suffix = crypto.randomUUID().slice(0, 8);
 const password = "LocalOnly-" + crypto.randomUUID() + "-Aa9!";
 const users = {};
 const created = [];
+const createdOrderIds = [];
 const accounts = [
   ["test_customer1", "customer1"],
   ["test_customer2", "customer2"],
@@ -59,6 +60,21 @@ try {
   }).select("id").single();
   assert.ifError(orderInsert.error);
   const orderId = orderInsert.data.id;
+  createdOrderIds.push(orderId);
+
+  const publicOrderNumber = "SI-" + crypto.randomUUID().slice(0,8).toUpperCase();
+  const publicInsert = await anon.from("orders").insert({
+    order_number: publicOrderNumber, customer_name: "Synthetic Anonymous Customer", business_name: "Synthetic Public Shop",
+    phone: "0000000000", service_type: "all_links", social_links: {}, extra_links: [],
+    menu_file_paths: [], notes: "Synthetic anonymous insert fixture", acrylic_nfc: false, items: [],
+    subtotal: 0, deposit_amount: 0, remaining_amount: 0, payment_method: "instapay",
+    payment_proof_path: "customer-uploads/" + suffix + "/anon-proof.png",
+    payment_status: "proof_submitted", order_status: "pending", staff_notes: "", public_status_note: ""
+  });
+  assert.ifError(publicInsert.error);
+  const publicRow = await admin.from("orders").select("id").eq("order_number", publicOrderNumber).single();
+  assert.ifError(publicRow.error);
+  createdOrderIds.push(publicRow.data.id);
 
   for (const name of ["test_customer1","test_customer2"]) {
     const result = await users[name].client.from("orders").select("id");
@@ -72,6 +88,13 @@ try {
   const staffOrders = await users.test_staff.client.from("orders").select("id").eq("id", orderId);
   assert.ifError(staffOrders.error);
   assert.equal(staffOrders.data.length, 1, "active orders staff should read orders");
+  const staffStatusUpdate = await users.test_staff.client.from("orders").update({ order_status: "confirmed" }).eq("id", orderId);
+  assert.ifError(staffStatusUpdate.error);
+  const staffPaymentTamper = await users.test_staff.client.from("orders").update({ payment_status: "paid" }).eq("id", orderId);
+  assert.ok(staffPaymentTamper.error, "orders-only staff must not change payment fields");
+  const sqlInjection = await users.test_staff.client.from("orders").select("id").eq("order_number", "' OR 1=1 --");
+  assert.ifError(sqlInjection.error);
+  assert.equal(sqlInjection.data.length, 0, "SQL-looking input must remain a literal filter value");
 
   const suspendedPermission = await users.test_suspended.client.rpc("has_staff_permission", { permission_name: "orders" });
   assert.ifError(suspendedPermission.error);
@@ -134,6 +157,8 @@ try {
   assert.equal(deleted.data.length, 0, "synthetic archived order should be deleted");
   console.log("RLS/Auth/Storage/archive integration checks completed. NOTE: MIME-spoofed non-image bytes were accepted as image/png; server-side signature validation is still required.");
 } finally {
-  // Best-effort cleanup is limited to identities created by this CI run.
+  // Best-effort cleanup is limited to synthetic rows and identities created by this CI run.
+  if (createdOrderIds.length) await admin.from("orders").delete().in("id", createdOrderIds);
+  if (created.length) await admin.from("staff_members").delete().in("user_id", created);
   for (const id of created) await admin.auth.admin.deleteUser(id);
 }
