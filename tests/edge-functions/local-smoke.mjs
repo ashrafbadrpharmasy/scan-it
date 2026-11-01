@@ -31,3 +31,14 @@ const noAuthDelete = await fetch(base + "/delete-archive-orders", {
 });
 assert.equal(noAuthDelete.status, 401);
 console.log("Local Edge Function smoke checks passed: CORS allow/deny, invalid tracking input, unauthenticated archive delete.");
+
+
+const spoofed = new FormData();
+spoofed.append("file", new Blob(["this is not a PNG"], { type: "image/png" }), "spoof.png");
+const rejectedUpload = await fetch(base + "/secure-upload", {
+  method: "POST",
+  headers: { Origin: origin, apikey: "local-anon-key" },
+  body: spoofed
+});
+assert.equal(rejectedUpload.status, 415, "upload endpoint must reject MIME-spoofed content");
+console.log("Secure upload rejected a file whose declared MIME did not match its byte signature.");
