@@ -9,7 +9,7 @@ if [ "${CONFIRM_PRODUCTION_ROLLBACK:-}" != "YES" ]; then
   exit 2
 fi
 case "$DEPLOYMENT_URL" in
-  https://*.vercel.app|https://*.*) ;;
+  https://*.vercel.app) ;;
   *) echo "Deployment URL must be an HTTPS Vercel deployment URL."; exit 2 ;;
 esac
 
