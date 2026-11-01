@@ -1,0 +1,101 @@
+name: Isolated security regression
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [security/hardening-followup-2026-11-01]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scan-it-isolated-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Stage migrations without replaying incomplete production history
+        run: |
+          mv supabase/migrations /tmp/scan-it-migrations
+          mkdir -p supabase/migrations
+      - name: Start isolated Supabase stack
+        id: supabase_start
+        run: supabase start -x studio,mailpit,logflare,vector
+      - name: Export local Supabase environment
+        run: supabase status -o env >> "$GITHUB_ENV"
+      - name: Import production schema only when a DB URL secret exists
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret absent: schema-aware RLS/Auth tests are skipped, not passed." | tee docs-security-schema-status.txt
+            exit 0
+          fi
+          supabase db dump --db-url "$DATABASE_URL" --schema public,private --file /tmp/scan-it-production-schema.sql
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f /tmp/scan-it-production-schema.sql
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/fixtures/local-storage-policies.sql
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f /tmp/scan-it-migrations/20261101120100_secure_storage_uploads.sql
+          echo "Production schema-only snapshot, local Storage policies, and branch upload-hardening migration imported to disposable local Postgres; no production rows were exported."
+      - name: Install browser and Supabase test dependencies
+        run: |
+          npm install --no-save @playwright/test @supabase/supabase-js
+          npx playwright install --with-deps chromium
+      - name: Run static security regression suite
+        run: node --test tests/security-static.test.mjs
+      - name: Run Auth, RLS, Storage, and archive integration tests when schema is available
+        if: env.DATABASE_URL != ''
+        env:
+          SUPABASE_URL: ${{ env.API_URL }}
+          SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+        run: node tests/integration/supabase-local.mjs
+      - name: Run browser smoke tests
+        run: |
+          node tests/browser/static-server.mjs >/tmp/scan-it-http.log 2>&1 &
+          echo $! >/tmp/scan-it-http.pid
+          npx playwright test tests/browser/security-smoke.spec.mjs
+      - name: Serve and probe local Edge Functions
+        run: |
+          cat > /tmp/functions.env <<EOF
+          SUPABASE_URL=$API_URL
+          SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY
+          EOF
+          supabase functions serve --env-file /tmp/functions.env --no-verify-jwt >/tmp/scan-it-functions.log 2>&1 &
+          echo $! >/tmp/scan-it-functions.pid
+          for i in $(seq 1 30); do
+            if curl -sS -o /dev/null http://127.0.0.1:54321/functions/v1/track-order; then break; fi
+            sleep 2
+          done
+          node tests/edge-functions/local-smoke.mjs
+      - name: Stop isolated stack
+        if: always() && steps.supabase_start.outcome == 'success'
+        run: supabase stop --no-backup
+      - name: Save non-sensitive evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-it-isolated-security-${{ github.run_id }}
+          path: |
+            docs/security-evidence/
+            docs-security-schema-status.txt
+            /tmp/scan-it-http.log
+            /tmp/scan-it-functions.log
+          if-no-files-found: ignore
+          retention-days: 14

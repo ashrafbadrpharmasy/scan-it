@@ -1,0 +1,34 @@
+project_id = "scan-it-security-ci"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[studio]
+enabled = false
+
+[inbucket]
+enabled = false
+
+[analytics]
+enabled = false
+
+[functions.track-order]
+verify_jwt = false
+
+[functions.delete-archive-orders]
+verify_jwt = false
+
+[functions.password-security]
+verify_jwt = true
+
+[functions.secure-upload]
+verify_jwt = false

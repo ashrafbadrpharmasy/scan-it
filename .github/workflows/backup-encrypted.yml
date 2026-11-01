@@ -1,0 +1,70 @@
+name: Encrypted production backup (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Verify repository is private before reading or exporting data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          visibility="$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility)"
+          echo "Repository visibility: $visibility"
+          if [ "$visibility" != "private" ]; then
+            echo "::error::Backup blocked. This repository is public; no database dump, Storage object, or artifact will be created or uploaded."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify required secrets exist without printing values
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          for name in DATABASE_URL BACKUP_PASSPHRASE SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!name}" ]; then echo "::error::Missing required GitHub Actions secret: $name"; exit 1; fi
+          done
+      - name: Install PostgreSQL and encryption tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client gnupg
+          npm install --no-save @supabase/supabase-js
+      - name: Create encrypted database and Storage backups
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/scan-it-backup
+          pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" --file /tmp/scan-it-backup/production.dump
+          psql "$DATABASE_URL" -At -c "SELECT format('SELECT %L, count(*) FROM %I.%I;', table_schema||'.'||table_name, table_schema, table_name) FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema NOT IN ('pg_catalog','information_schema') ORDER BY 1" | psql "$DATABASE_URL" -At > /tmp/scan-it-backup/row-counts.tsv
+          STORAGE_BACKUP_DIR=/tmp/scan-it-backup/storage node scripts/backup-storage.mjs
+          tar -C /tmp/scan-it-backup -czf /tmp/scan-it-backup/storage.tar.gz storage
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 --output /tmp/scan-it-backup/database.dump.gpg /tmp/scan-it-backup/production.dump
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 --output /tmp/scan-it-backup/storage.tar.gz.gpg /tmp/scan-it-backup/storage.tar.gz
+          rm -f /tmp/scan-it-backup/production.dump /tmp/scan-it-backup/storage.tar.gz
+          echo "Encrypted backup artifacts prepared. Database table counts: $(wc -l < /tmp/scan-it-backup/row-counts.tsv); Storage object count: $(node -e "const m=require('/tmp/scan-it-backup/storage/manifest.json');process.stdout.write(String(m.count))")"
+      - name: Upload encrypted backups only
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-it-encrypted-production-backup-${{ github.run_id }}
+          path: |
+            /tmp/scan-it-backup/database.dump.gpg
+            /tmp/scan-it-backup/storage.tar.gz.gpg
+            /tmp/scan-it-backup/row-counts.tsv
+          if-no-files-found: error
+          retention-days: 30
