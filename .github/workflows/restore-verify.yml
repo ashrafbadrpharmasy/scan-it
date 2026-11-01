@@ -1,0 +1,89 @@
+name: Verify encrypted backup restore (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_run_id:
+        description: GitHub Actions run ID that contains the encrypted backup artifact
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  restore-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Verify repository is private
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          visibility="$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility)"
+          if [ "$visibility" != "private" ]; then
+            echo "::error::Restore artifact access blocked because the repository is public."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Verify passphrase secret
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: test -n "$BACKUP_PASSPHRASE" || (echo "::error::Missing BACKUP_PASSPHRASE secret" && exit 1)
+      - name: Download encrypted backup artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: scan-it-encrypted-production-backup-${{ inputs.backup_run_id }}
+          run-id: ${{ inputs.backup_run_id }}
+          github-token: ${{ github.token }}
+          path: /tmp/scan-it-restore
+      - name: Start isolated Supabase Postgres
+        run: supabase start -x studio,mailpit,logflare,vector
+      - name: Decrypt and restore database into a separate local database
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --decrypt /tmp/scan-it-restore/database.dump.gpg > /tmp/scan-it-restore/production.dump
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --decrypt /tmp/scan-it-restore/storage.tar.gz.gpg > /tmp/scan-it-restore/storage.tar.gz
+          tar -C /tmp/scan-it-restore -xzf /tmp/scan-it-restore/storage.tar.gz
+          PGPASSWORD=postgres createdb -h 127.0.0.1 -p 54322 -U postgres scan_it_restore_check
+          PGPASSWORD=postgres pg_restore --no-owner --no-acl --exit-on-error -h 127.0.0.1 -p 54322 -U postgres -d scan_it_restore_check /tmp/scan-it-restore/production.dump
+      - name: Compare restored table counts and Storage object checksums
+        run: |
+          set -euo pipefail
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/scan_it_restore_check" -At -c "SELECT format('SELECT %L, count(*) FROM %I.%I;', table_schema||'.'||table_name, table_schema, table_name) FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema NOT IN ('pg_catalog','information_schema') ORDER BY 1" | psql "postgresql://postgres:postgres@127.0.0.1:54322/scan_it_restore_check" -At > /tmp/scan-it-restore/restored-row-counts.tsv
+          diff -u /tmp/scan-it-restore/row-counts.tsv /tmp/scan-it-restore/restored-row-counts.tsv
+          node scripts/verify-storage-backup.mjs /tmp/scan-it-restore/storage
+          echo "Restore verification succeeded: database row counts match and all downloaded Storage object checksums match."
+      - name: Save restore verification evidence
+        if: always()
+        run: |
+          mkdir -p docs/security-evidence
+          {
+            echo "# Backup restore verification"
+            echo
+            echo "- Run: $GITHUB_RUN_ID"
+            echo "- Backup run: ${{ inputs.backup_run_id }}"
+            echo "- Result: see workflow job conclusion"
+            echo "- Database comparison: exact per-table counts"
+            echo "- Storage comparison: manifest count and SHA-256 per object"
+            echo "- No production data was modified."
+          } > docs/security-evidence/backup-restore-${{ github.run_id }}.md
+      - name: Upload restore evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-it-backup-restore-evidence-${{ github.run_id }}
+          path: docs/security-evidence/backup-restore-${{ github.run_id }}.md
+          retention-days: 14
+      - name: Stop isolated stack
+        if: always()
+        run: supabase stop --no-backup
