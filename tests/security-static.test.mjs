@@ -39,6 +39,8 @@ test("tracking page calls the public tracking function without rendering raw HTM
   assert.match(html, /functions\/v1\/track-order/);
   assert.match(html, /box\.textContent\s*=\s*'جاري البحث/);
   assert.match(html, /public_status_note/);
+  assert.match(html, /const safeNumber=String\(o\.order_number\|\|''\)\.replace/);
+  assert.match(html, /رقم الأوردر: '\+safeNumber\+'/);
 });
 
 test("Vercel security headers include baseline protections", async () => {
