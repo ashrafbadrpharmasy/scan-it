@@ -73,6 +73,6 @@ test("dynamic InstaPay URL from settings is restricted to HTTPS", async () => {
 
 test("staff product names and employee names are escaped before insertion", async () => {
   const html = await read("staff.html");
-  assert.match(html, /value=\''\+esc\(x\.name_ar\)/);
+  assert.match(html, /value="'\+esc\(x\.name_ar\)\+'/);
   assert.match(html, /esc\(x\.display_name\)/);
 });
