@@ -67,10 +67,10 @@
 - `order.html`: escaped order number in tracking output.
 - `tests/security-static.test.mjs`: static security regression checks.
 - `.github/workflows/security-static.yml`: Node test workflow.
-- `supabase/migrations/202611010001_prevent_self_staff_privilege_changes.sql`: trigger blocks an authenticated staff member from changing their own role, permissions, or active status.
+- `supabase/migrations/20261101035917_prevent_self_staff_privilege_changes.sql`: trigger blocks an authenticated staff member from changing their own role, permissions, or active status.
 
 ### Added during this continuation
-- `supabase/migrations/202611010002_deny_api_access_track_order_rate_limits.sql`: explicit deny policy and revokes for `anon` and `authenticated`. **Prepared only; not applied.**
+- `supabase/migrations/20261101120000_deny_api_access_track_order_rate_limits.sql`: explicit deny policy and revokes for `anon` and `authenticated`. **Prepared only; not applied.**
 - `scripts/backup-scan-it.sh`: free operator-run pg_dump + Storage backup checklist. **Not executed; Storage export remains a manual completion item.**
 
 ### Deployed Edge Function source findings
