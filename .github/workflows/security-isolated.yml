@@ -31,6 +31,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Stage migrations without replaying incomplete production history
+        run: |
+          mv supabase/migrations /tmp/scan-it-migrations
+          mkdir -p supabase/migrations
       - name: Start isolated Supabase stack
         id: supabase_start
         run: supabase start -x studio,mailpit,logflare,vector
@@ -46,8 +50,9 @@ jobs:
           fi
           supabase db dump --db-url "$DATABASE_URL" --schema public,private --file /tmp/scan-it-production-schema.sql
           psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f /tmp/scan-it-production-schema.sql
-          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/migrations/20261101120100_secure_storage_uploads.sql
-          echo "Production schema-only snapshot and branch upload-hardening migration imported to disposable local Postgres; no production rows were exported."
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/fixtures/local-storage-policies.sql
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f /tmp/scan-it-migrations/20261101120100_secure_storage_uploads.sql
+          echo "Production schema-only snapshot, local Storage policies, and branch upload-hardening migration imported to disposable local Postgres; no production rows were exported."
       - name: Install browser and Supabase test dependencies
         run: |
           npm install --no-save @playwright/test @supabase/supabase-js
