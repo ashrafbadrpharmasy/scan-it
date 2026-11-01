@@ -37,7 +37,7 @@ const spoofed = new FormData();
 spoofed.append("file", new Blob(["this is not a PNG"], { type: "image/png" }), "spoof.png");
 const rejectedUpload = await fetch(base + "/secure-upload", {
   method: "POST",
-  headers: { Origin: origin, apikey: "local-anon-key" },
+  headers: { Origin: origin, apikey: process.env.ANON_KEY || "" },
   body: spoofed
 });
 assert.equal(rejectedUpload.status, 415, "upload endpoint must reject MIME-spoofed content");
