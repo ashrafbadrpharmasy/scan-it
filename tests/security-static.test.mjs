@@ -61,6 +61,9 @@ test("Vercel security headers include baseline protections", async () => {
   assert.equal(values["x-frame-options"], "DENY");
   assert.match(values["content-security-policy"], /object-src 'none'/);
   assert.match(values["content-security-policy"], /frame-ancestors 'none'/);
+  assert.doesNotMatch(values["content-security-policy"], /unsafe-inline/);
+  assert.match(values["content-security-policy"], /script-src-attr 'unsafe-hashes'/);
+  assert.match(values["content-security-policy"], /style-src-attr 'unsafe-hashes'/);
   assert.match(values["strict-transport-security"], /max-age=/);
 });
 
